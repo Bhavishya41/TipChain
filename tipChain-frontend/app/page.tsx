@@ -12,43 +12,70 @@ import {
   TrendingUp,
   Shield,
   BadgeCheck,
+  Loader2,
 } from 'lucide-react';
 import CreatorCard from '@/components/ui/creator-card';
 import { getTrending } from '@/lib/api';
 import type { ApiCreator } from '@/lib/api';
-import { mockCreators, formatCurrency, formatNumber } from '@/lib/mock-data';
+import { formatCurrency, formatNumber } from '@/lib/mock-data';
 import type { Creator } from '@/lib/types';
 
 const fadeUp = { initial: { opacity: 0, y: 30 }, animate: { opacity: 1, y: 0 } };
 const stagger = { animate: { transition: { staggerChildren: 0.08 } } };
 
 /** Map backend creator onto frontend Creator type for CreatorCard */
-function apiToCreator(api: ApiCreator, index: number): Creator {
-  const mock = mockCreators.find((m) => m.username === api.handle) ?? mockCreators[index % mockCreators.length];
+function apiToCreator(api: ApiCreator): Creator {
   return {
-    ...mock,
     id: api.handle,
     username: api.handle,
-    stats: { ...mock.stats, totalEarnings: api.totalReserveUSD },
+    displayName: api.handle,
+    avatar: '',
+    bio: '',
+    category: 'other',
+    verified: api.isClaimed,
+    socials: {},
+    stats: {
+      supporters: 0,
+      totalTips: 0,
+      totalEarnings: api.totalReserveUSD,
+      weeklyGrowth: 0,
+    },
+    token: {
+      id: api.tokenAddress ?? api.handle,
+      name: api.handle,
+      symbol: `$${api.handle.toUpperCase().slice(0, 6)}`,
+      price: 0,
+      priceChange24h: 0,
+      marketCap: api.totalReserveUSD,
+      totalSupply: 0,
+      circulatingSupply: 0,
+      holders: 0,
+      volume24h: 0,
+      chartData: [],
+      createdAt: new Date().toISOString(),
+    },
+    joinedAt: new Date().toISOString(),
   };
 }
 
 export default function HomePage() {
-  const [featuredCreators, setFeaturedCreators] = useState<Creator[]>(mockCreators.slice(0, 3));
-  const [tableCreators, setTableCreators] = useState<Creator[]>(mockCreators);
+  const [featuredCreators, setFeaturedCreators] = useState<Creator[]>([]);
+  const [tableCreators, setTableCreators] = useState<Creator[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getTrending(10)
       .then((data) => {
         if (data.creators.length > 0) {
-          const mapped = data.creators.map((c, i) => apiToCreator(c, i));
+          const mapped = data.creators.map(apiToCreator);
           setFeaturedCreators(mapped.slice(0, 3));
           setTableCreators(mapped);
         }
       })
       .catch(() => {
-        // Silent fallback — mock data already set as default state
-      });
+        // Backend unavailable — leave lists empty
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -120,11 +147,25 @@ export default function HomePage() {
               View all <ArrowRight className="h-4 w-4" />
             </Link>
           </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featuredCreators.map((creator, i) => (
-              <CreatorCard key={creator.id} creator={creator} index={i} />
-            ))}
-          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-[#111113] border-2 border-[#27272A] h-48 animate-pulse" />
+              ))}
+            </div>
+          ) : featuredCreators.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {featuredCreators.map((creator, i) => (
+                <CreatorCard key={creator.id} creator={creator} index={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-[#111113] border-2 border-[#27272A] p-16 text-center">
+              <p className="text-sm text-[#52525B] font-bold uppercase tracking-wider">No creators yet</p>
+              <p className="text-xs text-[#3F3F46] mt-2">Be the first to launch your token.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -164,45 +205,63 @@ export default function HomePage() {
             <p className="text-sm text-[#A1A1AA] mt-3 max-w-md">Browse trending creators, discover new tokens, and join communities that matter to you.</p>
           </motion.div>
 
-          <div className="border-2 border-[#27272A]">
-            <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b-2 border-[#27272A] bg-[#111113]">
-              <div className="col-span-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">#</div>
-              <div className="col-span-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">Creator</div>
-              <div className="col-span-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">Price</div>
-              <div className="col-span-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">24h</div>
-              <div className="col-span-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B] hidden sm:block">MCap</div>
-              <div className="col-span-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B] hidden sm:block">Holders</div>
+          {loading ? (
+            <div className="border-2 border-[#27272A] p-10 flex items-center justify-center gap-2 text-[#52525B]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-xs font-bold uppercase tracking-wider">Loading…</span>
             </div>
+          ) : tableCreators.length > 0 ? (
+            <div className="border-2 border-[#27272A]">
+              <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b-2 border-[#27272A] bg-[#111113]">
+                <div className="col-span-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">#</div>
+                <div className="col-span-4 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">Creator</div>
+                <div className="col-span-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">Price</div>
+                <div className="col-span-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">24h</div>
+                <div className="col-span-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B] hidden sm:block">MCap</div>
+                <div className="col-span-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B] hidden sm:block">Holders</div>
+              </div>
 
-            {tableCreators.map((creator, i) => {
-              const isPositive = creator.token.priceChange24h >= 0;
-              return (
-                <motion.div key={creator.id} initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
-                  <Link href={`/creator/${creator.username}`} className="grid grid-cols-12 gap-4 px-5 py-4 border-b-2 border-[#1E1E22] hover:bg-[#111113] transition-colors group">
-                    <div className="col-span-1 text-sm font-bold text-[#52525B] tabular-nums self-center">{i + 1}</div>
-                    <div className="col-span-4 flex items-center gap-3">
-                      <div className="h-8 w-8 border-2 border-[#27272A] bg-[#18181B] flex items-center justify-center text-sm font-black text-[#6D28FF] shrink-0">
-                        {creator.displayName.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1">
-                          <p className="text-sm font-bold text-[#F5F5F5] truncate group-hover:text-[#6D28FF] transition-colors">{creator.displayName}</p>
-                          {creator.verified && <BadgeCheck className="h-3.5 w-3.5 text-[#6D28FF] shrink-0" />}
+              {tableCreators.map((creator, i) => {
+                const isPositive = creator.token.priceChange24h >= 0;
+                return (
+                  <motion.div key={creator.id} initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
+                    <Link href={`/creator/${creator.username}`} className="grid grid-cols-12 gap-4 px-5 py-4 border-b-2 border-[#1E1E22] hover:bg-[#111113] transition-colors group">
+                      <div className="col-span-1 text-sm font-bold text-[#52525B] tabular-nums self-center">{i + 1}</div>
+                      <div className="col-span-4 flex items-center gap-3">
+                        <div className="h-8 w-8 border-2 border-[#27272A] bg-[#18181B] flex items-center justify-center text-sm font-black text-[#6D28FF] shrink-0">
+                          {creator.displayName.charAt(0).toUpperCase()}
                         </div>
-                        <p className="text-xs text-[#52525B]">{creator.token.symbol}</p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1">
+                            <p className="text-sm font-bold text-[#F5F5F5] truncate group-hover:text-[#6D28FF] transition-colors">{creator.displayName}</p>
+                            {creator.verified && <BadgeCheck className="h-3.5 w-3.5 text-[#6D28FF] shrink-0" />}
+                          </div>
+                          <p className="text-xs text-[#52525B]">{creator.token.symbol}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="col-span-2 text-sm font-bold text-[#F5F5F5] tabular-nums self-center">${creator.token.price.toFixed(4)}</div>
-                    <div className={`col-span-2 text-sm font-bold tabular-nums self-center ${isPositive ? 'text-[#4ADE80]' : 'text-[#F97316]'}`}>
-                      {isPositive ? '+' : ''}{creator.token.priceChange24h.toFixed(1)}%
-                    </div>
-                    <div className="col-span-2 text-sm font-bold text-[#A1A1AA] tabular-nums self-center hidden sm:block">{formatCurrency(creator.token.marketCap)}</div>
-                    <div className="col-span-1 text-sm font-bold text-[#A1A1AA] tabular-nums self-center hidden sm:block">{formatNumber(creator.token.holders)}</div>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </div>
+                      <div className="col-span-2 text-sm font-bold text-[#F5F5F5] tabular-nums self-center">
+                        {creator.token.price > 0 ? `$${creator.token.price.toFixed(4)}` : '—'}
+                      </div>
+                      <div className={`col-span-2 text-sm font-bold tabular-nums self-center ${isPositive ? 'text-[#4ADE80]' : 'text-[#F97316]'}`}>
+                        {creator.token.priceChange24h !== 0 ? `${isPositive ? '+' : ''}${creator.token.priceChange24h.toFixed(1)}%` : '—'}
+                      </div>
+                      <div className="col-span-2 text-sm font-bold text-[#A1A1AA] tabular-nums self-center hidden sm:block">
+                        {creator.token.marketCap > 0 ? formatCurrency(creator.token.marketCap) : '—'}
+                      </div>
+                      <div className="col-span-1 text-sm font-bold text-[#A1A1AA] tabular-nums self-center hidden sm:block">
+                        {creator.token.holders > 0 ? formatNumber(creator.token.holders) : '—'}
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="border-2 border-[#27272A] bg-[#111113] p-16 text-center">
+              <p className="text-sm text-[#52525B] font-bold uppercase tracking-wider">No creators yet</p>
+              <p className="text-xs text-[#3F3F46] mt-2">Launch the first creator token to get started.</p>
+            </div>
+          )}
 
           <div className="mt-6 flex justify-center">
             <Link href="/marketplace" className="flex items-center gap-2 border-2 border-[#27272A] px-6 py-3 text-sm font-bold uppercase tracking-wider text-[#A1A1AA] hover:text-[#F5F5F5] hover:border-[#6D28FF] transition-all">
@@ -246,18 +305,18 @@ export default function HomePage() {
                   <div className="flex gap-1.5">
                     <div className="h-3 w-3 bg-[#F97316]" /><div className="h-3 w-3 bg-[#4ADE80]" /><div className="h-3 w-3 bg-[#6D28FF]" />
                   </div>
-                  <div className="flex-1 bg-[#18181B] border-2 border-[#27272A] px-3 py-1.5 text-xs text-[#52525B] font-mono">x.com/synthwave_sarah</div>
+                  <div className="flex-1 bg-[#18181B] border-2 border-[#27272A] px-3 py-1.5 text-xs text-[#52525B] font-mono">x.com/your_handle</div>
                 </div>
                 <div className="mb-4">
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 bg-[#18181B] border-2 border-[#27272A] flex items-center justify-center text-sm font-black text-[#6D28FF] shrink-0">S</div>
+                    <div className="h-10 w-10 bg-[#18181B] border-2 border-[#27272A] flex items-center justify-center text-sm font-black text-[#6D28FF] shrink-0">C</div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-sm font-bold text-[#F5F5F5]">Sarah Chen</span>
+                        <span className="text-sm font-bold text-[#F5F5F5]">Creator</span>
                         <BadgeCheck className="h-3.5 w-3.5 text-[#6D28FF]" />
-                        <span className="text-xs text-[#52525B]">@synthwavesarah</span>
+                        <span className="text-xs text-[#52525B]">@creator_handle</span>
                       </div>
-                      <p className="text-sm text-[#A1A1AA] leading-relaxed">Just dropped a new ambient EP 🎧 Check it out — link in bio.</p>
+                      <p className="text-sm text-[#A1A1AA] leading-relaxed">Just shipped something big 🚀 Join the community.</p>
                     </div>
                   </div>
                 </div>
@@ -267,8 +326,8 @@ export default function HomePage() {
                     <span className="text-xs font-bold uppercase tracking-wider text-[#F5F5F5]">TipChain</span>
                   </div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#A1A1AA]">Tip @synthwavesarah</span>
-                    <span className="text-sm font-bold text-[#F5F5F5] tabular-nums">$SARAH</span>
+                    <span className="text-xs text-[#A1A1AA]">Tip @creator_handle</span>
+                    <span className="text-sm font-bold text-[#F5F5F5] tabular-nums">$TOKEN</span>
                   </div>
                   <div className="grid grid-cols-4 gap-2 mb-3">
                     {['$1', '$5', '$10', '$25'].map((amt) => (
