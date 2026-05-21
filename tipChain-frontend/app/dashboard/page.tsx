@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -9,7 +8,6 @@ import {
   Users,
   Coins,
   ArrowUpRight,
-  ArrowDownRight,
   Activity,
   Zap,
   Send,
@@ -21,32 +19,17 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import StatCard from '@/components/ui/stat-card';
-import MiniChart from '@/components/ui/mini-chart';
 import { getCreator, getCreatorTips } from '@/lib/api';
 import type { ApiCreatorDetail, ApiTip } from '@/lib/api';
 import { useAuth } from '@/components/providers/AuthContext';
-import {
-  mockCreators,
-  formatCurrency,
-  formatNumber,
-  timeAgo,
-} from '@/lib/mock-data';
-
-// Fallback mock creator for chart data + token info
-const MOCK_FALLBACK = mockCreators[0];
+import { formatCurrency, formatNumber, timeAgo } from '@/lib/mock-data';
 
 export default function DashboardPage() {
   const { isAuthenticated, user, logout } = useAuth();
-  const router = useRouter();
 
   const [creator, setCreator] = useState<ApiCreatorDetail | null>(null);
   const [tips, setTips] = useState<ApiTip[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Redirect unauthenticated users to claim page
-  useEffect(() => {
-    if (!isAuthenticated) return; // will show the locked state
-  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.handle) return;
@@ -100,8 +83,6 @@ export default function DashboardPage() {
   const totalEarnings = creator?.totalReserveUSD ?? 0;
   const tipCount = tips.length;
   const handle = user?.handle ?? '';
-  // Use mock for chart data (backend doesn't store OHLC)
-  const chartCreator = mockCreators.find((m) => m.username.includes(handle)) ?? MOCK_FALLBACK;
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
@@ -155,15 +136,15 @@ export default function DashboardPage() {
           />
           <StatCard
             label="Token Holders"
-            value={formatNumber(chartCreator.stats.supporters)}
-            change={chartCreator.stats.weeklyGrowth}
+            value="—"
+            change={0}
             icon={<Users className="h-4 w-4" />}
             accentColor="#4ADE80"
           />
           <StatCard
             label="Token Valuation"
-            value={`$${chartCreator.token.price.toFixed(4)}`}
-            change={chartCreator.token.priceChange24h}
+            value="—"
+            change={0}
             icon={<Coins className="h-4 w-4" />}
           />
           <StatCard
@@ -178,7 +159,7 @@ export default function DashboardPage() {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Token Analytics */}
+        {/* Vault Info */}
         <div className="lg:col-span-2 bg-[#111113] border-2 border-[#27272A]">
           <div className="flex items-center justify-between px-5 py-4 border-b-2 border-[#27272A]">
             <div className="flex items-center gap-3">
@@ -186,43 +167,48 @@ export default function DashboardPage() {
                 <TrendingUp className="h-4 w-4 text-[#6D28FF]" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-[#F5F5F5]">{chartCreator.token.symbol} Analytics</h3>
-                <p className="text-xs text-[#52525B]">Last 30 days</p>
+                <h3 className="text-sm font-extrabold text-[#F5F5F5]">Vault Analytics</h3>
+                <p className="text-xs text-[#52525B]">Live on-chain data</p>
               </div>
-            </div>
-            <div className="flex gap-1">
-              {['7D', '30D', '90D', 'ALL'].map((period) => (
-                <button
-                  key={period}
-                  className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border-2 ${period === '30D' ? 'border-[#6D28FF] text-[#6D28FF] bg-[#6D28FF]/5' : 'border-transparent text-[#52525B] hover:text-[#A1A1AA]'}`}
-                >
-                  {period}
-                </button>
-              ))}
             </div>
           </div>
           <div className="p-5">
             <div className="flex items-end gap-6 mb-6">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">Current Price</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">Vault Reserve (USD)</span>
                 <p className="text-3xl font-black text-[#F5F5F5] tabular-nums">
-                  ${chartCreator.token.price.toFixed(4)}
+                  {loading ? '—' : formatCurrency(totalEarnings)}
                 </p>
               </div>
-              <span className={`flex items-center gap-1 text-xs font-bold tabular-nums mb-1 ${chartCreator.token.priceChange24h >= 0 ? 'text-[#4ADE80]' : 'text-[#F97316]'}`}>
-                {chartCreator.token.priceChange24h >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                {chartCreator.token.priceChange24h >= 0 ? '+' : ''}{chartCreator.token.priceChange24h.toFixed(1)}%
-              </span>
+              {creator?.isClaimed && (
+                <span className="flex items-center gap-1 text-xs font-bold tabular-nums mb-1 text-[#4ADE80]">
+                  <ArrowUpRight className="h-3 w-3" />
+                  Claimed
+                </span>
+              )}
             </div>
-            <div className="w-full overflow-hidden">
-              <MiniChart data={chartCreator.token.chartData} width={700} height={200} color="auto" />
-            </div>
-            <div className="grid grid-cols-4 gap-4 mt-6 pt-5 border-t-2 border-[#1E1E22]">
+
+            {/* Token Address */}
+            {creator?.tokenAddress && (
+              <div className="bg-[#0B0B0C] border-2 border-[#1E1E22] p-4 mb-6">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B] block mb-1">Token Contract</span>
+                <a
+                  href={`https://sepolia.basescan.org/token/${creator.tokenAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-mono text-[#6D28FF] hover:underline break-all"
+                >
+                  {creator.tokenAddress}
+                </a>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 pt-5 border-t-2 border-[#1E1E22]">
               {[
                 { label: 'Vault Reserve', value: formatCurrency(totalEarnings) },
-                { label: 'Volume 24h', value: formatCurrency(chartCreator.token.volume24h) },
-                { label: 'Holders', value: formatNumber(chartCreator.token.holders) },
-                { label: 'Circulating', value: formatNumber(chartCreator.token.circulatingSupply) },
+                { label: 'Tips Received', value: formatNumber(tipCount) },
+                { label: 'Claim Status', value: creator?.isClaimed ? 'Claimed ✓' : 'Unclaimed' },
+                { label: 'Platform', value: creator?.platform ?? '—' },
               ].map((stat) => (
                 <div key={stat.label}>
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">{stat.label}</span>
@@ -233,7 +219,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions + Growth */}
+        {/* Quick Actions */}
         <div className="space-y-5">
           <div className="bg-[#111113] border-2 border-[#27272A]">
             <div className="px-5 py-4 border-b-2 border-[#27272A]">
@@ -258,31 +244,24 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-[#111113] border-2 border-[#27272A]">
-            <div className="px-5 py-4 border-b-2 border-[#27272A]">
-              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[#A1A1AA]">Supporter Growth</h3>
-            </div>
-            <div className="p-5">
-              <div className="flex items-end justify-between mb-4">
-                <div>
-                  <p className="text-2xl font-black text-[#F5F5F5] tabular-nums">{formatNumber(chartCreator.stats.supporters)}</p>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B]">Total supporters</span>
-                </div>
-                <span className="text-xs font-bold text-[#4ADE80] tabular-nums">+{chartCreator.stats.weeklyGrowth}% this week</span>
+          {/* Creator Wallet */}
+          {creator?.creatorWallet && (
+            <div className="bg-[#111113] border-2 border-[#27272A]">
+              <div className="px-5 py-4 border-b-2 border-[#27272A]">
+                <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[#A1A1AA]">Creator Wallet</h3>
               </div>
-              <div className="flex items-end gap-1.5 h-20">
-                {[35, 42, 28, 55, 48, 62, 58, 70, 65, 78, 85, 92].map((val, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${val}%` }}
-                    transition={{ delay: i * 0.05, duration: 0.3 }}
-                    className="flex-1 bg-[#6D28FF]/20 border-t-2 border-[#6D28FF]"
-                  />
-                ))}
+              <div className="p-5">
+                <a
+                  href={`https://sepolia.basescan.org/address/${creator.creatorWallet}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-mono text-[#6D28FF] hover:underline break-all"
+                >
+                  {creator.creatorWallet}
+                </a>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

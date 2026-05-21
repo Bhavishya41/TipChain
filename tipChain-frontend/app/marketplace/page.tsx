@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import CreatorCard from '@/components/ui/creator-card';
 import { getTrending, type ApiCreator } from '@/lib/api';
-import { mockCreators } from '@/lib/mock-data';
+import { formatCurrency, formatNumber } from '@/lib/mock-data';
 import type { Creator, CreatorCategory } from '@/lib/types';
 
 const sortOptions = [
@@ -35,24 +35,37 @@ const categoryFilters: { value: CreatorCategory | 'all'; label: string }[] = [
 ];
 
 /** Map backend ApiCreator onto the frontend Creator shape for CreatorCard */
-function apiToCreator(api: ApiCreator, index: number): Creator {
-  // Find a matching mock creator to inherit rich fields (avatar, bio, socials, token)
-  const mock = mockCreators.find(
-    (m) => m.username === api.handle || m.username.includes(api.handle)
-  ) ?? mockCreators[index % mockCreators.length];
-
+function apiToCreator(api: ApiCreator): Creator {
   return {
-    ...mock,
     id: api.handle,
     username: api.handle,
+    displayName: api.handle,
+    avatar: '',
+    bio: '',
+    category: 'other',
+    verified: api.isClaimed,
+    socials: {},
     stats: {
-      ...mock.stats,
+      supporters: 0,
+      totalTips: 0,
       totalEarnings: api.totalReserveUSD,
+      weeklyGrowth: 0,
     },
     token: {
-      ...mock.token,
-      ...(api.tokenAddress ? { id: api.tokenAddress } : {}),
+      id: api.tokenAddress ?? api.handle,
+      name: api.handle,
+      symbol: `$${api.handle.toUpperCase().slice(0, 6)}`,
+      price: 0,
+      priceChange24h: 0,
+      marketCap: api.totalReserveUSD,
+      totalSupply: 0,
+      circulatingSupply: 0,
+      holders: 0,
+      volume24h: 0,
+      chartData: [],
+      createdAt: new Date().toISOString(),
     },
+    joinedAt: new Date().toISOString(),
   };
 }
 
@@ -70,17 +83,15 @@ export default function MarketplacePage() {
     setLoading(true);
     setError(null);
 
-    getTrending(50) // fetch up to 50 — client-side filter/sort after
+    getTrending(50)
       .then((data) => {
         if (cancelled) return;
-        const mapped = data.creators.map((c, i) => apiToCreator(c, i));
-        setCreators(mapped.length > 0 ? mapped : mockCreators);
+        setCreators(data.creators.map(apiToCreator));
       })
       .catch(() => {
         if (cancelled) return;
-        // Graceful fallback to mock data so UI is never empty
-        setCreators(mockCreators);
-        setError('Live data unavailable — showing demo creators.');
+        setError('Could not reach the backend. Please try again later.');
+        setCreators([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -244,7 +255,7 @@ export default function MarketplacePage() {
             No creators found
           </p>
           <p className="text-xs text-[#3F3F46] mt-2">
-            Try adjusting your search or filters
+            {error ? 'Backend unavailable — no data to display.' : 'Try adjusting your search or filters'}
           </p>
         </div>
       )}
