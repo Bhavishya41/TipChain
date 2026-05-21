@@ -10,34 +10,29 @@ const { connectDB } = require('./middlewares/db');
 const { startIndexer } = require('./services/indexer');
 const creatorRoutes = require('./routes/creator');
 const claimRoutes = require('./routes/claim');
+const tipsRoutes = require('./routes/tips');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ─── Global Middlewares ───────────────────────────────────────────────────────
 
-// Security headers
-app.use(helmet());
-
-// CORS — restrict to known origins in production
-const allowedOrigins = (process.env.CORS_ORIGINS || '*').split(',');
-app.use(
-  cors({
-    origin: allowedOrigins.length === 1 && allowedOrigins[0] === '*'
-      ? '*'
-      : (origin, cb) => {
-          if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-          return cb(new Error(`CORS: origin ${origin} not allowed`));
-        },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  })
-);
+// CORS — wide open, let the whole world in 🌍
+app.use(cors());
 
 // Body parsing
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: false }));
+
+// ─── Request Logger ───────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    console.log(`[${req.method}] ${req.originalUrl} → ${res.statusCode} (${ms}ms) from ${req.headers.origin || 'no-origin'}`);
+  });
+  next();
+});
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 
@@ -49,6 +44,7 @@ app.get('/health', (_req, res) =>
 
 app.use('/api/creator', creatorRoutes);
 app.use('/api/claim', claimRoutes);
+app.use('/api/tips', tipsRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 

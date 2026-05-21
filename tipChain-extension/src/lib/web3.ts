@@ -4,7 +4,6 @@ import { UGFClient } from "@tychilabs/ugf-testnet-js"
 // Your brand new deployed factory and token parameters
 const FACTORY_ADDRESS = "0xB735cd5C016Ca44e0281F48AB6c5198e3D0B65d2"
 const MOCK_USD_ADDRESS = "0x27dc1c167aef232bb1e21073304b526726a8727e"
-const BACKEND_API = "http://localhost:8000/api/tips" // Matches your port 8000 setup
 
 declare global {
   interface Window {
@@ -203,23 +202,8 @@ export async function executeGaslessTip(
 
   const txHash = result.userTxHash
 
-  // Sync with Backend for Indexing fallback
-  try {
-    await fetch(BACKEND_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        txHash,
-        creatorHandle: handle,
-        fanWallet: walletAddress,
-        rawAmount: rawAmount.toString(),
-        formattedAmount: `$${amountUsd}`,
-        timestamp: new Date().toISOString()
-      })
-    })
-  } catch (err) {
-    console.error("Backend sync logged:", err)
-  }
+  // Backend sync is handled by web3-client.ts → background.ts pipeline.
+  // MAIN world fetch to localhost is blocked by YouTube's CSP.
 
   return {
     txHash,

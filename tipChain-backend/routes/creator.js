@@ -23,12 +23,37 @@ router.get('/trending', async (req, res) => {
     if (onlyUnclaimed) filter.isClaimed = false;
 
     const [creators, total] = await Promise.all([
-      Creator.find(filter)
-        .sort({ totalReserveUSD: -1 })
-        .skip(skip)
-        .limit(limit)
-        .select('handle platform tokenAddress totalReserveUSD isClaimed youtubeChannelId -_id')
-        .lean(),
+      Creator.aggregate([
+        { $match: filter },
+        { $sort: { totalReserveUSD: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: 'tips',
+            localField: 'handle',
+            foreignField: 'creatorHandle',
+            as: 'tips'
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            handle: 1,
+            platform: 1,
+            tokenAddress: 1,
+            totalReserveUSD: 1,
+            isClaimed: 1,
+            youtubeChannelId: 1,
+            tipsCount: { $size: '$tips' },
+            holdersCount: {
+              $size: {
+                $setUnion: [ { $ifNull: ['$tips.fanWallet', []] } ]
+              }
+            }
+          }
+        }
+      ]),
       Creator.countDocuments(filter),
     ]);
 

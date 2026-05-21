@@ -29,7 +29,8 @@ export default function CreatorProfilePage({
 }: {
   params: Promise<{ username: string }>;
 }) {
-  const { username } = use(params);
+  const { username: rawUsername } = use(params);
+  const username = decodeURIComponent(rawUsername);
 
   const [apiCreator, setApiCreator] = useState<ApiCreatorDetail | null>(null);
   const [tips, setTips] = useState<ApiTip[]>([]);
@@ -40,7 +41,6 @@ export default function CreatorProfilePage({
   const [copiedContract, setCopiedContract] = useState(false);
 
   const [tipAmount, setTipAmount] = useState(5);
-  const [buyAmount, setBuyAmount] = useState('');
   const [activeTab, setActiveTab] = useState<'activity' | 'supporters'>('activity');
 
   // Fetch live creator data
@@ -290,45 +290,8 @@ export default function CreatorProfilePage({
               </div>
             </div>
 
-            {/* Buy Panel */}
-            <div className="px-5 py-4 border-b-2 border-[#27272A]">
-              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[#A1A1AA]">
-                Buy Token
-              </h3>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#52525B] block mb-1.5">
-                  Amount (USD)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#52525B] font-bold">$</span>
-                  <input
-                    type="number"
-                    value={buyAmount}
-                    onChange={(e) => setBuyAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full bg-[#0B0B0C] border-2 border-[#27272A] pl-8 pr-4 py-3 text-sm text-[#F5F5F5] placeholder-[#52525B] focus:border-[#6D28FF] focus:outline-none transition-colors tabular-nums"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-[#0B0B0C] border-2 border-[#1E1E22] p-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#52525B]">Token</span>
-                  <span className="font-bold text-[#F5F5F5] tabular-nums font-mono text-[10px]">
-                    {tokenAddress ? `${tokenAddress.slice(0, 8)}…` : 'Not deployed'}
-                  </span>
-                </div>
-              </div>
-
-              <button className="w-full flex items-center justify-center gap-2 bg-[#6D28FF] py-3 text-sm font-bold uppercase tracking-wider text-white border-2 border-[#6D28FF] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0px_0px_#F5F5F5]">
-                Buy Token
-              </button>
-            </div>
-
             {/* Tip Section */}
-            <div className="border-t-2 border-[#27272A]">
+            <div>
               <div className="px-5 py-4 border-b-2 border-[#27272A]">
                 <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[#A1A1AA]">Tip Creator</h3>
               </div>

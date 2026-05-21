@@ -21,6 +21,8 @@ export interface ApiCreator {
   creatorWallet: string | null;
   youtubeChannelId: string | null;
   recentTips?: ApiTip[];
+  tipsCount?: number;
+  holdersCount?: number;
 }
 
 export interface ApiCreatorDetail extends ApiCreator {

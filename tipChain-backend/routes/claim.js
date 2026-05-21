@@ -30,6 +30,22 @@ router.get('/auth-url', (req, res) => {
   return res.json({ url });
 });
 
+// ─── GET /api/claim/oauth-callback ───────────────────────────────────────────
+// Google redirects the user's browser here. We redirect them back to the
+// frontend app's claim page with the query params so the SPA can parse them.
+router.get('/oauth-callback', (req, res) => {
+  const { code, state, error } = req.query;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  
+  if (error) {
+    return res.redirect(`${frontendUrl}/claim?error=${encodeURIComponent(error)}`);
+  }
+  
+  return res.redirect(
+    `${frontendUrl}/claim?code=${encodeURIComponent(code || '')}&state=${encodeURIComponent(state || '')}`
+  );
+});
+
 // ─── POST /api/claim/oauth-callback ──────────────────────────────────────────
 // Receives the OAuth authorization code from Google redirect.
 // Validates identity → matches YouTube channel → issues JWT.

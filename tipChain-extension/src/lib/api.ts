@@ -1,7 +1,5 @@
 // src/lib/api.ts — TipChain backend client for the browser extension
-// Uses PLASMO_PUBLIC_API_URL (set in .env)
-
-const BASE_URL = process.env.PLASMO_PUBLIC_API_URL ?? "http://localhost:8000"
+// Routes ALL requests through background.ts service worker to bypass YouTube CSP.
 
 export interface ExtApiCreator {
   handle: string
@@ -13,18 +11,28 @@ export interface ExtApiCreator {
   youtubeChannelId: string | null
 }
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options
+/**
+ * Generic fetch-via-background helper.
+ * Sends a message to the background service worker which has
+ * unrestricted network access (no page CSP).
+ */
+async function bgFetch<T>(path: string, method = "GET", body?: any): Promise<T> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { type: "API_FETCH", method, path, body },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+          return
+        }
+        if (!response || !response.ok) {
+          reject(new Error(response?.data?.error ?? `API ${response?.status ?? "unknown"}`))
+          return
+        }
+        resolve(response.data as T)
+      }
+    )
   })
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error((body as { error?: string })?.error ?? `API ${res.status}`)
-  }
-
-  return res.json() as Promise<T>
 }
 
 /**
@@ -37,7 +45,7 @@ export async function getCreatorStats(handle: string): Promise<ExtApiCreator | n
     .toLowerCase()
     .trim()
 
-  return apiFetch<ExtApiCreator>(`/api/creator/${encodeURIComponent(normalized)}`).catch(
+  return bgFetch<ExtApiCreator>(`/api/creator/${encodeURIComponent(normalized)}`).catch(
     () => null
   )
 }

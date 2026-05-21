@@ -1,5 +1,6 @@
 /**
  * Isolated World client to communicate with the MAIN world web3-provider.
+ * Backend sync is routed through background.ts service worker.
  */
 
 function sendMessage<T>(action: string, payload?: any): Promise<T> {
@@ -33,5 +34,40 @@ export async function executeGaslessTipBridge(
   amountUsd: number,
   walletAddress: string
 ): Promise<{ txHash: string; explorerUrl: string }> {
-  return sendMessage("EXECUTE_TIP", { handle, amount: amountUsd, wallet: walletAddress })
+  const result = await sendMessage<{ txHash: string; explorerUrl: string }>(
+    "EXECUTE_TIP",
+    { handle, amount: amountUsd, wallet: walletAddress }
+  )
+
+  // ── Sync tip to backend via background service worker ─────────────────────
+  const platform = window.location.hostname.includes("youtube") ? "youtube"
+    : window.location.hostname.includes("twitter") || window.location.hostname.includes("x.com") ? "twitter"
+    : "other"
+
+  try {
+    chrome.runtime.sendMessage({
+      type: "API_FETCH",
+      method: "POST",
+      path: "/api/tips",
+      body: {
+        txHash: result.txHash,
+        creatorHandle: handle,
+        fanWallet: walletAddress,
+        rawAmount: String(amountUsd * 1e6),
+        formattedAmount: `$${amountUsd}`,
+        timestamp: new Date().toISOString(),
+        platform
+      }
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error("[TipChain] Tip sync error:", chrome.runtime.lastError.message)
+      } else {
+        console.log("[TipChain] Tip synced to backend:", response)
+      }
+    })
+  } catch (err) {
+    console.error("[TipChain] Failed to sync tip:", err)
+  }
+
+  return result
 }

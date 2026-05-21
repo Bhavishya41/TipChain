@@ -36,6 +36,11 @@ const categoryFilters: { value: CreatorCategory | 'all'; label: string }[] = [
 
 /** Map backend ApiCreator onto the frontend Creator shape for CreatorCard */
 function apiToCreator(api: ApiCreator): Creator {
+  const holders = api.holdersCount ?? 0;
+  const tips = api.tipsCount ?? 0;
+  // Deterministic price based on reserve, e.g. reserve / 100 or a minimum fallback of 0.0001
+  const price = api.totalReserveUSD > 0 ? (api.totalReserveUSD / 100) : 0.0001;
+
   return {
     id: api.handle,
     username: api.handle,
@@ -46,8 +51,8 @@ function apiToCreator(api: ApiCreator): Creator {
     verified: api.isClaimed,
     socials: {},
     stats: {
-      supporters: 0,
-      totalTips: 0,
+      supporters: holders,
+      totalTips: tips,
       totalEarnings: api.totalReserveUSD,
       weeklyGrowth: 0,
     },
@@ -55,12 +60,12 @@ function apiToCreator(api: ApiCreator): Creator {
       id: api.tokenAddress ?? api.handle,
       name: api.handle,
       symbol: `$${api.handle.toUpperCase().slice(0, 6)}`,
-      price: 0,
+      price,
       priceChange24h: 0,
       marketCap: api.totalReserveUSD,
       totalSupply: 0,
       circulatingSupply: 0,
-      holders: 0,
+      holders,
       volume24h: 0,
       chartData: [],
       createdAt: new Date().toISOString(),
