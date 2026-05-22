@@ -52,16 +52,13 @@ export async function getCreatorStats(handle: string): Promise<ExtApiCreator | n
 
 /**
  * Get the live USD vault total for a creator.
- * Falls back to a deterministic seed-based number when the creator isn't in DB.
+ * Returns the real on-chain reserve for indexed creators,
+ * or 0 for creators who haven't been registered on TipChain yet.
  */
 export async function getCreatorVaultTotal(creatorName: string): Promise<number> {
   const creator = await getCreatorStats(creatorName)
   if (creator !== null) return creator.totalReserveUSD
 
-  // Deterministic fallback so the UI is never empty
-  const seed = Array.from(creatorName).reduce(
-    (total, char) => total + char.charCodeAt(0),
-    0
-  )
-  return 120 + (seed % 380)
+  // Creator not yet in DB → they have no vault/tips yet
+  return 0
 }
