@@ -2,9 +2,9 @@
 // ALL backend communication goes through here because YouTube's CSP
 // blocks fetch() to localhost from both MAIN and isolated world scripts.
 
-const BACKEND_API = "http://localhost:8000"
+const BACKEND_API = process.env.PLASMO_PUBLIC_API_URL;
 
-export {}
+export { }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "API_FETCH") {

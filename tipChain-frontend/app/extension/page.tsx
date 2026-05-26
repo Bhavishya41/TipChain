@@ -1,6 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Chrome,
   Zap,
@@ -49,6 +50,19 @@ const features = [
 ];
 
 export default function ExtensionPage() {
+  const [showNotification, setShowNotification] = useState(false);
+  const timeoutRef = useRef<any>(null);
+
+  const handleDownload = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setShowNotification(true);
+    timeoutRef.current = setTimeout(() => {
+      setShowNotification(false);
+    }, 5000);
+  };
+
   return (
     <div>
       {/* ============== Hero ============== */}
@@ -74,14 +88,24 @@ export default function ExtensionPage() {
           </p>
           <div className="flex flex-wrap gap-4">
             {/* TODO: Link to Chrome Web Store */}
-            <button className="flex items-center gap-2 bg-[#6D28FF] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white border-2 border-[#6D28FF] transition-all hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[6px_6px_0px_0px_#F5F5F5]">
+            <a
+              href="/tipChain-extension.rar"
+              download="tipChain-extension.rar"
+              onClick={handleDownload}
+              className="flex items-center gap-2 bg-[#6D28FF] px-7 py-4 text-sm font-bold uppercase tracking-wider text-white border-2 border-[#6D28FF] transition-all hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[6px_6px_0px_0px_#F5F5F5]"
+            >
               <Chrome className="h-4 w-4" />
               Install Extension
-            </button>
-            <button className="flex items-center gap-2 border-2 border-[#27272A] px-7 py-4 text-sm font-bold uppercase tracking-wider text-[#A1A1AA] hover:text-[#F5F5F5] hover:border-[#F5F5F5] transition-all">
+            </a>
+            <a
+              href="https://drive.google.com/file/d/16ax3vxH84GxPBgM6Ar0TeU0W12yGtpdO/view?usp=drive_link"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 border-2 border-[#27272A] px-7 py-4 text-sm font-bold uppercase tracking-wider text-[#A1A1AA] hover:text-[#F5F5F5] hover:border-[#F5F5F5] transition-all"
+            >
               Watch Demo
               <ArrowRight className="h-4 w-4" />
-            </button>
+            </a>
           </div>
         </motion.div>
       </section>
@@ -360,14 +384,40 @@ export default function ExtensionPage() {
             <p className="text-sm text-[#A1A1AA] max-w-md mx-auto mb-8">
               Available for Chrome. Firefox and Brave support coming soon.
             </p>
-            <button className="inline-flex items-center gap-2 bg-[#6D28FF] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white border-2 border-[#6D28FF] transition-all hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[6px_6px_0px_0px_#F5F5F5]">
+            <a
+              href="/tipChain-extension.rar"
+              download="tipChain-extension.rar"
+              onClick={handleDownload}
+              className="inline-flex items-center gap-2 bg-[#6D28FF] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white border-2 border-[#6D28FF] transition-all hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[6px_6px_0px_0px_#F5F5F5]"
+            >
               <Chrome className="h-4 w-4" />
               Install for Chrome
               <ExternalLink className="h-3.5 w-3.5" />
-            </button>
+            </a>
           </motion.div>
         </div>
       </section>
+
+      <AnimatePresence>
+        {showNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-50 bg-[#111113] border-2 border-[#4ADE80] p-4 shadow-[4px_4px_0px_0px_#4ADE80] max-w-sm flex items-center gap-3"
+          >
+            <div className="h-8 w-8 border-2 border-[#4ADE80] flex items-center justify-center shrink-0">
+              <Zap className="h-4 w-4 text-[#4ADE80]" strokeWidth={3} />
+            </div>
+            <div className="text-left">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#F5F5F5]">Download Started</p>
+              <p className="text-[10px] text-[#A1A1AA] mt-0.5 leading-relaxed">
+                Your download will start soon. Please check your browser's download manager.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
