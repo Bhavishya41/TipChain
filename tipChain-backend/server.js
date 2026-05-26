@@ -83,4 +83,8 @@ app.use((err, _req, res, _next) => {
   }
 })();
 
+app.get('/', (req, res) => {
+  res.status(200).json({ status: "alive" });
+});
+
 module.exports = app; // for testing
